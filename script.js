@@ -5,33 +5,76 @@ const postWrapperItem = document.querySelector(".post-wrapper_item");
 let repositories = [];
 let sortedRepositories = [];
 
-fetch("https://api.github.com/search/repositories?q=Q&per_page=100")
-  .then((response) => response.json())
-  .then((data) => {
-    console.log(data);
-    data.items.forEach((elem) => repositories.push(elem));
-  });
-
-function sortRepositories(arr, value) {
-  return arr.filter((rep) => {
-    let regex = new RegExp(value, "gi");
-    return rep.name.match(regex);
+function getData() {
+  let value = this.value;
+  if (!value) {
+    if (list.firstChild) {
+      list.replaceChildren();
+    }
+    return value;
+  }
+  return new Promise(function () {
+    fetch(`https://api.github.com/search/repositories?q=${value}&per_page=5`)
+      .then((response) => response.json())
+      .then((data) => {
+        repositories = [];
+        data.items.forEach((elem) => repositories.push(elem));
+      })
+      .then(() => {
+        if (list.firstChild) {
+          list.replaceChildren();
+        }
+        return repositories.map((elem) => {
+          return createListElement(elem.name);
+        });
+      })
+      .then(() => {
+        const listItems = document.querySelectorAll(".list_item");
+        return listItems.forEach((item) => {
+          item.addEventListener("click", function (event) {
+            input.value = null;
+            const clickedItem = repositories.find(
+              (elem) => elem.name === event.target.textContent
+            );
+            createWrapElement(
+              clickedItem.name,
+              clickedItem.owner,
+              clickedItem.srargazers_count
+            );
+            if (list.firstChild) {
+              list.replaceChildren();
+            }
+          });
+        });
+      });
   });
 }
 
-function createListElement() {
-  if (this.value) {
-    sortedRepositories = sortRepositories(repositories, this.value);
-    const listItem = sortedRepositories
-      .map((elem) => {
-        return `<li class="list_item"><span>${elem.name}</span></li>`;
-      })
-      .slice(0, 5)
-      .join("");
-    list.innerHTML = listItem;
-  } else {
-    list.innerHTML = "";
-  }
+function createListElement(name) {
+  let listItem = document.createElement("li");
+  listItem.className = "list_item";
+  let span = document.createElement("span");
+  span.textContent = name;
+  listItem.append(span);
+  list.append(listItem);
+}
+
+function createWrapElement(name, owner, stars) {
+  const post = document.createElement("div");
+  post.className = "post-wrapper_item";
+  const nameDiv = document.createElement("div");
+  nameDiv.textContent = `Name: ${name}`;
+  const ownerDiv = document.createElement("div");
+  ownerDiv.textContent = `Owner: ${owner}`;
+  const starsDiv = document.createElement("div");
+  starsDiv.textContent = `Srars: ${stars}`;
+  const closeBtn = document.createElement("div");
+  closeBtn.className = "post-wrapper_item-close close";
+  post.appendChild(nameDiv);
+  post.appendChild(ownerDiv);
+  post.appendChild(starsDiv);
+  post.appendChild(closeBtn);
+  postWrapper.appendChild(post);
 }
 
 const debounce = (fn, debounceTime) => {
@@ -45,23 +88,7 @@ const debounce = (fn, debounceTime) => {
   };
 };
 
-input.addEventListener("keyup", debounce(createListElement, 500));
-
-list.addEventListener("click", function (event) {
-  console.log(sortedRepositories);
-  const clickedItem = sortedRepositories.find(
-    (elem) => elem.name === event.target.textContent
-  );
-  const post = document.createElement("div");
-  post.className = "post-wrapper_item";
-  post.innerHTML = `<div>Name: ${clickedItem.name}</div>
-                    <div>Owner: ${clickedItem.owner.login}</div>
-                    <div>Stars: ${clickedItem.stargazers_count}</div>
-                    <div class='post-wrapper_item-close close'></div>`;
-  postWrapper.append(post);
-  list.innerHTML = "";
-  input.value = "";
-});
+input.addEventListener("input", debounce(getData, 500));
 
 postWrapper.addEventListener("click", function (event) {
   if (event.target.closest(".post-wrapper_item-close")) {
