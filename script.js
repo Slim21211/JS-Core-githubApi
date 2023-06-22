@@ -38,8 +38,8 @@ function getData() {
             );
             createWrapElement(
               clickedItem.name,
-              clickedItem.owner,
-              clickedItem.srargazers_count
+              clickedItem.owner.login,
+              clickedItem.stargazers_count
             );
             if (list.firstChild) {
               list.replaceChildren();
